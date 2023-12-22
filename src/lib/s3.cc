@@ -33,13 +33,14 @@ CreateClientConf(const std::string_view region,
 }
 
 bool GetObject(const Aws::Client::ClientConfiguration &clientConfig,
-               const std::string &fromBucket, const std::string &objectKey,
-               const std::string &filepath) {
+               const std::string_view &fromBucket,
+               const std::string_view &objectKey,
+               const std::string_view &filepath) {
   Aws::S3::S3Client client(clientConfig);
 
   Aws::S3::Model::GetObjectRequest request;
-  request.SetBucket(fromBucket);
-  request.SetKey(objectKey);
+  request.SetBucket(Aws::String(fromBucket));
+  request.SetKey(Aws::String(objectKey));
 
   Aws::S3::Model::GetObjectOutcome outcome = client.GetObject(request);
 
@@ -48,27 +49,28 @@ bool GetObject(const Aws::Client::ClientConfiguration &clientConfig,
     std::cerr << "Error: GetObject: " << err.GetExceptionName() << ": "
               << err.GetMessage() << std::endl;
   } else {
-    std::cout << "Successfully retrieved '" << objectKey << "' from '"
-              << fromBucket << "'." << std::endl;
+    // std::cout << "Successfully retrieved '" << objectKey << "' from '"
+    //         << fromBucket << "'." << std::endl;
   }
 
   return outcome.IsSuccess();
 }
 
 bool PutObject(const Aws::Client::ClientConfiguration &clientConfig,
-               const std::string &bucketName, const std::string &objectKey,
-               const std::string &fileName) {
+               const std::string_view &bucketName,
+               const std::string_view &objectKey,
+               const std::string_view &fileName) {
   Aws::S3::S3Client s3_client(clientConfig);
 
   Aws::S3::Model::PutObjectRequest request;
-  request.SetBucket(bucketName);
+  request.SetBucket(Aws::String(bucketName));
   // We are using the name of the file as the key for the object in the
-  // bucket. However, this is just a string and can be set according to your
-  // retrieval needs.
-  request.SetKey(fileName);
+  // bucket. However, this is just a string_view and can be set according to
+  // your retrieval needs.
+  request.SetKey(Aws::String(objectKey));
 
   std::shared_ptr<Aws::IOStream> inputData =
-      Aws::MakeShared<Aws::FStream>("SampleAllocationTag", fileName.c_str(),
+      Aws::MakeShared<Aws::FStream>("SampleAllocationTag", fileName,
                                     std::ios_base::in | std::ios_base::binary);
 
   if (!*inputData) {
@@ -84,8 +86,9 @@ bool PutObject(const Aws::Client::ClientConfiguration &clientConfig,
     std::cerr << "Error: PutObject: " << outcome.GetError().GetMessage()
               << std::endl;
   } else {
-    std::cout << "Added object '" << fileName << "' to bucket '" << bucketName
-              << "'.";
+    // std::cout << "Added object '" << fileName << "' to bucket '" <<
+    // bucketName
+    //           << "'.";
   }
 
   return outcome.IsSuccess();
