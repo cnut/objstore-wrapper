@@ -5,6 +5,20 @@
 #include <aws/s3/model/PutObjectRequest.h>
 #include <fstream>
 #include <iostream>
+#include <string_view>
+
+Aws::Client::ClientConfiguration
+CreateClientConf(const std::string_view region,
+                 const std::string_view *endpoint, bool useHttps) {
+  Aws::Client::ClientConfiguration clientConfig;
+  clientConfig.region = region;
+  if (endpoint != nullptr) {
+    clientConfig.endpointOverride = *endpoint;
+  }
+  clientConfig.scheme =
+      useHttps ? Aws::Http::Scheme::HTTPS : Aws::Http::Scheme::HTTP;
+  return clientConfig;
+}
 
 bool GetObject(const Aws::Client::ClientConfiguration &clientConfig,
                const std::string &fromBucket, const std::string &objectKey,
@@ -36,9 +50,9 @@ bool PutObject(const Aws::Client::ClientConfiguration &clientConfig,
 
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(bucketName);
-  // We are using the name of the file as the key for the object in the bucket.
-  // However, this is just a string and can be set according to your retrieval
-  // needs.
+  // We are using the name of the file as the key for the object in the
+  // bucket. However, this is just a string and can be set according to your
+  // retrieval needs.
   request.SetKey(fileName);
 
   std::shared_ptr<Aws::IOStream> inputData =
