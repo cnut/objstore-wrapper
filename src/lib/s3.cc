@@ -7,6 +7,18 @@
 #include <iostream>
 #include <string_view>
 
+ObjectStore::ObjectStore() {
+  Aws::SDKOptions options;
+  Aws::InitAPI(options);
+}
+
+ObjectStore::~ObjectStore() {
+  Aws::SDKOptions options;
+  Aws::ShutdownAPI(options);
+}
+
+ObjectStore g_object_store;
+
 Aws::Client::ClientConfiguration
 CreateClientConf(const std::string_view region,
                  const std::string_view *endpoint, bool useHttps) {

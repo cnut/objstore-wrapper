@@ -1,7 +1,12 @@
 #include <string>
 
-#include <aws/core/Aws.h>
 #include <aws/s3/S3Client.h>
+
+class ObjectStore {
+public:
+  ObjectStore();
+  ~ObjectStore();
+};
 
 Aws::Client::ClientConfiguration
 CreateClientConf(const std::string_view region,

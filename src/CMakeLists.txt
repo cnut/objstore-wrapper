@@ -23,7 +23,7 @@ target_sources(s3file
 target_include_directories(s3file SYSTEM PRIVATE "${INCLUDE_DIRS}")
 
 target_link_libraries(s3file
-    PRIVATE
+    PUBLIC
     ${AWSSDK_LINK_LIBRARIES}
     ${AWSSDK_PLATFORM_DEPS})
 
@@ -44,7 +44,10 @@ if(WITH_BENCHMARK)
     add_executable(${exename} ${sourcefile})
     add_dependencies(${exename} s3file benchmark-lib)
     target_link_libraries(${exename} PRIVATE s3file benchmark benchmark_main)
-    target_include_directories(${exename} SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/3rd/include")
+    target_include_directories(${exename} SYSTEM PRIVATE
+      "${CMAKE_BINARY_DIR}/3rd/include"
+      ${CURL_LIB}
+      ${INCLUDE_DIRS})
   endforeach(sourcefile ${BENCHMARKS})
 
 endif(WITH_BENCHMARK)
