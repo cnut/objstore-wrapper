@@ -1,6 +1,6 @@
 link_directories(${CMAKE_BINARY_DIR}/3rd/lib)
 
-set(SERVICE_COMPONENTS iam s3 sts)
+set(SERVICE_COMPONENTS s3)
 # Find the AWS SDK for C++ package.
 find_package(AWSSDK REQUIRED COMPONENTS ${SERVICE_COMPONENTS})
 
