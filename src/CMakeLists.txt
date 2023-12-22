@@ -1,17 +1,4 @@
-#
-# Copyright (c) 2023 ApeCloud, Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+link_directories(${CMAKE_BINARY_DIR}/3rd/lib)
 
 set(SERVICE_COMPONENTS iam s3 sts)
 # Find the AWS SDK for C++ package.
@@ -44,3 +31,20 @@ target_link_directories(s3file
     SYSTEM PRIVATE
     ${CURL_LIB}
     ${INCLUDE_DIRS})
+
+
+if(WITH_BENCHMARK)
+  set(BENCHMARK_FILE
+    bench/get.cc
+    bench/put.cc)
+
+  foreach(sourcefile ${BENCHMARK_FILE})
+    get_filename_component(filename ${sourcefile} NAME_WE)
+    set(exename run_${filename})
+    add_executable(${exename} ${sourcefile})
+    add_dependencies(${exename} s3file benchmark-lib)
+    target_link_libraries(${exename} PRIVATE s3file benchmark benchmark_main)
+    target_include_directories(${exename} SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/3rd/include")
+  endforeach(sourcefile ${BENCHMARKS})
+
+endif(WITH_BENCHMARK)
