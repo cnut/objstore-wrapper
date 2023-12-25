@@ -4,11 +4,29 @@
 
 #include "s3.h"
 
+#include <filesystem>
 #include <fstream>
 #include <string>
+#include <sys/errno.h>
 
 std::string_view kBucketName = "glenn-wp";
 std::string_view kRegionName = "cn-northwest-1";
+
+std::string formatBytes(uint64_t bytes) {
+  double size = static_cast<double>(bytes);
+  const char *units[] = {"B", "K", "M", "G", "T"};
+  char buf[64];
+
+  int index = 0;
+  while (size >= 1024 && index < sizeof(units) / sizeof(units[0])) {
+    size /= 1024;
+    index++;
+  }
+
+  int ret = snprintf(buf, sizeof(buf), "%.2f%s", size, units[index]);
+  assert(ret > 0 && ret < sizeof(buf));
+  return std::string(buf, ret);
+}
 
 int CreateFile(std::string_view path, size_t fsize) {
   std::ofstream file(path.data(), std::ios::binary);
@@ -24,6 +42,11 @@ int CreateFile(std::string_view path, size_t fsize) {
   return 0; // Return 0 on success
 }
 
+int RemoveFile(std::string_view path) {
+  bool deleted = std::filesystem::remove(path.data());
+  return deleted ? 0 : -ENOENT;
+}
+
 void Benchmark_CreateConfigure(benchmark::State &state) {
   for ([[maybe_unused]] auto _ : state) {
     Aws::Client::ClientConfiguration config =
@@ -31,36 +54,47 @@ void Benchmark_CreateConfigure(benchmark::State &state) {
   }
 }
 
-void Benchmark_Put32B(benchmark::State &state) {
-  std::string_view filepath = "some_file";
-  int ret = CreateFile(filepath, 32);
+void CreateFilePutToS3DeleteFile(std::string_view prefix, size_t fsize,
+                                 benchmark::State &state) {
+  std::string fsize_str = formatBytes(fsize);
+  std::string filepath = std::string(prefix) + "_" + fsize_str;
+  std::string objkey = std::string(prefix) + "_" + fsize_str;
+  int ret = CreateFile(filepath, fsize);
   assert(ret == 0);
 
   Aws::Client::ClientConfiguration config =
       CreateClientConf(kRegionName, nullptr, false);
 
-  int i = 0;
-
   for ([[maybe_unused]] auto _ : state) {
-    PutObject(config, kBucketName, "small" + std::to_string(i++), filepath);
+    PutObject(config, kBucketName, objkey, filepath);
   }
+
+  RemoveFile(filepath);
+}
+
+void Benchmark_Put32B(benchmark::State &state) {
+  CreateFilePutToS3DeleteFile("test_put", 32, state);
+}
+
+void Benchmark_Put4K(benchmark::State &state) {
+  CreateFilePutToS3DeleteFile("test_put", 4096, state);
 }
 
 void Benchmark_Put2M(benchmark::State &state) {
-  std::string_view filepath = "some_file";
-  int ret = CreateFile(filepath, 2 * 1024 * 1024);
-  assert(ret == 0);
+  CreateFilePutToS3DeleteFile("test_put", 2 * 1024 * 1024, state);
+}
 
-  Aws::Client::ClientConfiguration config =
-      CreateClientConf(kRegionName, nullptr, false);
+void Benchmark_Put128M(benchmark::State &state) {
+  CreateFilePutToS3DeleteFile("test_put", 128 * 1024 * 1024, state);
+}
 
-  int i = 0;
-
-  for ([[maybe_unused]] auto _ : state) {
-    PutObject(config, kBucketName, "big" + std::to_string(i++), filepath);
-  }
+void Benchmark_Put2G(benchmark::State &state) {
+  CreateFilePutToS3DeleteFile("test_put", 2ULL * 1024 * 1024 * 1024, state);
 }
 
 BENCHMARK(Benchmark_CreateConfigure);
-BENCHMARK(Benchmark_Put32B);
-BENCHMARK(Benchmark_Put2M);
+BENCHMARK(Benchmark_Put32B)->Iterations(10);
+BENCHMARK(Benchmark_Put4K)->Iterations(10);
+BENCHMARK(Benchmark_Put2M)->Iterations(10);
+BENCHMARK(Benchmark_Put128M)->Iterations(10);
+BENCHMARK(Benchmark_Put2G)->Iterations(10);
