@@ -30,23 +30,21 @@ S3ApiGlobalOption g_aws_api_option_initializor;
 
 }; // namespace
 
-Status S3ObjectStore::put_object(const std::string_view &bucket,
-                                 const std::string_view &key,
-                                 const std::string_view &file_name) {
+Status
+S3ObjectStore::put_object_from_file(const std::string_view &bucket,
+                                    const std::string_view &key,
+                                    const std::string_view &data_file_name) {
 
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(Aws::String(bucket));
-  // We are using the name of the file as the key for the object in the
-  // bucket. However, this is just a string_view and can be set according to
-  // your retrieval needs.
   request.SetKey(Aws::String(key));
 
   std::shared_ptr<Aws::IOStream> inputData =
-      Aws::MakeShared<Aws::FStream>("SampleAllocationTag", file_name,
+      Aws::MakeShared<Aws::FStream>("IOStreamAllocationTag", data_file_name,
                                     std::ios_base::in | std::ios_base::binary);
 
   if (!*inputData) {
-    std::cerr << "Error unable to read file " << file_name << std::endl;
+    std::cerr << "Error unable to read file " << data_file_name << std::endl;
     return Status(-1, "Error unable to read file");
   }
 
@@ -68,6 +66,55 @@ Status S3ObjectStore::put_object(const std::string_view &bucket,
   return Status();
 }
 
+Status
+S3ObjectStore::get_object_to_file(const std::string_view &bucket,
+                                  const std::string_view &key,
+                                  const std::string_view &output_file_name) {
+  std::string result;
+  Status status = get_object(bucket, key, result);
+
+  std::shared_ptr<Aws::IOStream> outputStream = Aws::MakeShared<Aws::FStream>(
+      "IOStreamAllocationTag", output_file_name,
+      std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+  outputStream->write(result.c_str(), result.length());
+
+  return Status();
+}
+
+Status S3ObjectStore::put_object(const std::string_view &bucket,
+                                 const std::string_view &key,
+                                 const std::string_view &data) {
+
+  Aws::S3::Model::PutObjectRequest request;
+  request.SetBucket(Aws::String(bucket));
+  // We are using the name of the file as the key for the object in the
+  // bucket. However, this is just a string_view and can be set according to
+  // your retrieval needs.
+  request.SetKey(Aws::String(key));
+
+  const std::shared_ptr<Aws::IOStream> inputData =
+      Aws::MakeShared<Aws::StringStream>("SStreamAllocationTag");
+
+  if (!*inputData) {
+    std::cerr << "Error to create string stream buf" << std::endl;
+    return Status(-1, "Error unable to read file");
+  }
+
+  *inputData << data;
+  request.SetBody(inputData);
+
+  Aws::S3::Model::PutObjectOutcome outcome = s3_client_.PutObject(request);
+
+  if (!outcome.IsSuccess()) {
+    std::cerr << "Error: PutObject: " << outcome.GetError().GetMessage()
+              << std::endl;
+    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
+                  outcome.GetError().GetMessage());
+  }
+
+  return Status();
+}
+
 Status S3ObjectStore::get_object(const std::string_view &bucket,
                                  const std::string_view &key,
                                  std::string &body) {
@@ -84,9 +131,6 @@ Status S3ObjectStore::get_object(const std::string_view &bucket,
     return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
                   outcome.GetError().GetMessage());
   } else {
-    // std::cout << "Successfully retrieved '" << objectKey << "' from '"
-    //         << fromBucket << "'." << std::endl;
-
     std::ostringstream oss;
     oss << outcome.GetResult().GetBody().rdbuf();
     body = oss.str();

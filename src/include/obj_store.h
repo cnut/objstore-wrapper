@@ -33,11 +33,21 @@ private:
 
 class ObjectStore {
 public:
+  virtual Status
+  put_object_from_file(const std::string_view &bucket,
+                       const std::string_view &key,
+                       const std::string_view &data_file_name) = 0;
+  virtual Status
+  get_object_to_file(const std::string_view &bucket,
+                     const std::string_view &key,
+                     const std::string_view &output_file_name) = 0;
+
   virtual Status put_object(const std::string_view &bucket,
                             const std::string_view &key,
-                            const std::string_view &file_name) = 0;
+                            const std::string_view &data) = 0;
   virtual Status get_object(const std::string_view &bucket,
                             const std::string_view &key, std::string &body) = 0;
+
   virtual Status list_object(const std::string_view &bucket,
                              const std::string_view &key,
                              std::vector<std::string> objects) = 0;

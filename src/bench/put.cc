@@ -63,7 +63,7 @@ void CreateFilePutToS3DeleteFile(std::string_view prefix, size_t fsize,
   assert(obj_store != nullptr);
 
   for ([[maybe_unused]] auto _ : state) {
-    obj_store->put_object(kBucketName, objkey, filepath.c_str());
+    obj_store->put_object_from_file(kBucketName, objkey, filepath.c_str());
   }
 
   delete obj_store;

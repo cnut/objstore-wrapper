@@ -12,8 +12,14 @@ public:
       : s3_client_(s3_client){};
   virtual ~S3ObjectStore() = default;
 
+  Status put_object_from_file(const std::string_view &bucket,
+                              const std::string_view &key,
+                              const std::string_view &data_file_name) override;
+  Status get_object_to_file(const std::string_view &bucket,
+                            const std::string_view &key,
+                            const std::string_view &output_file_name) override;
   Status put_object(const std::string_view &bucket, const std::string_view &key,
-                    const std::string_view &file_name) override;
+                    const std::string_view &data) override;
   Status get_object(const std::string_view &bucket, const std::string_view &key,
                     std::string &input) override;
   Status list_object(const std::string_view &bucket,
