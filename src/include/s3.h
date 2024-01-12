@@ -2,21 +2,36 @@
 
 #include <aws/s3/S3Client.h>
 
-class ObjectStore {
+#include "obj_store.h"
+
+namespace objstore {
+
+class S3ObjectStore : public ObjectStore {
 public:
-  ObjectStore();
-  ~ObjectStore();
+  explicit S3ObjectStore(Aws::S3::S3Client &&s3_client)
+      : s3_client_(s3_client){};
+  virtual ~S3ObjectStore() = default;
+
+  Status put_object(const std::string_view &bucket, const std::string_view &key,
+                    const std::string_view &file_name) override;
+  Status get_object(const std::string_view &bucket, const std::string_view &key,
+                    std::string &input) override;
+  Status list_object(const std::string_view &bucket,
+                     const std::string_view &key,
+                     std::vector<std::string> objects) override;
+
+private:
+  Aws::S3::S3Client s3_client_;
 };
 
-Aws::Client::ClientConfiguration
-CreateClientConf(const std::string_view region,
-                 const std::string_view *endpoint, bool useHttps = true);
+S3ObjectStore *create_s3_objstore(const std::string_view region,
+                                  const std::string_view *endpoint,
+                                  bool useHttps = true);
 
-bool GetObject(const Aws::Client::ClientConfiguration &clientConfig,
-               const std::string &fromBucket, const std::string_view &objectKey,
-               const std::string_view &filepath);
+S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
+                                  const std::string_view &secret_key,
+                                  const std::string_view region,
+                                  const std::string_view *endpoint,
+                                  bool useHttps = true);
 
-bool PutObject(const Aws::Client::ClientConfiguration &clientConfig,
-               const std::string_view &Bucket,
-               const std::string_view &objectKey,
-               const std::string_view &filepath);
+}; // namespace objstore
