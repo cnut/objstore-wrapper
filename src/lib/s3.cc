@@ -33,6 +33,51 @@ S3ApiGlobalOption g_aws_api_option_initializor;
 
 }; // namespace
 
+Status S3ObjectStore::create_bucket(const std::string_view &bucket) {
+  Aws::S3::Model::CreateBucketRequest request;
+  request.SetBucket(std::string(bucket));
+
+  if (region_ != "us-east-1") {
+    Aws::S3::Model::CreateBucketConfiguration createBucketConfig;
+    createBucketConfig.SetLocationConstraint(
+        Aws::S3::Model::BucketLocationConstraintMapper::
+            GetBucketLocationConstraintForName(region_));
+    request.SetCreateBucketConfiguration(createBucketConfig);
+  }
+
+  Aws::S3::Model::CreateBucketOutcome outcome =
+      s3_client_.CreateBucket(request);
+  if (!outcome.IsSuccess()) {
+    auto err = outcome.GetError();
+    std::cerr << "Error: CreateBucket: " << err.GetExceptionName() << ": "
+              << err.GetMessage() << std::endl;
+    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
+                  outcome.GetError().GetMessage());
+  }
+
+  return Status();
+}
+
+Status S3ObjectStore::delete_bucket(const std::string_view &bucket) {
+  Aws::S3::Model::DeleteBucketRequest request;
+  request.SetBucket(std::string(bucket));
+
+  Aws::S3::Model::DeleteBucketOutcome outcome =
+      s3_client_.DeleteBucket(request);
+
+  if (!outcome.IsSuccess()) {
+    const Aws::S3::S3Error &err = outcome.GetError();
+    std::cerr << "Error: DeleteBucket: " << err.GetExceptionName() << ": "
+              << err.GetMessage() << std::endl;
+    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
+                  outcome.GetError().GetMessage());
+  } else {
+    // std::cout << "The bucket was deleted" << std::endl;
+  }
+
+  return Status();
+}
+
 Status
 S3ObjectStore::put_object_from_file(const std::string_view &bucket,
                                     const std::string_view &key,
@@ -179,7 +224,7 @@ S3ObjectStore *create_s3_objstore(const std::string_view region,
   clientConfig.scheme =
       use_https ? Aws::Http::Scheme::HTTPS : Aws::Http::Scheme::HTTP;
   Aws::S3::S3Client client(clientConfig);
-  return new S3ObjectStore(std::move(client));
+  return new S3ObjectStore(region, std::move(client));
 }
 
 S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
@@ -201,7 +246,7 @@ S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
 
   Aws::S3::S3Client s3_client(credentials, clientConfig);
 
-  return new S3ObjectStore(std::move(s3_client));
+  return new S3ObjectStore(region, std::move(s3_client));
 #else
   return nullptr;
 #endif
