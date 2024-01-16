@@ -13,9 +13,9 @@ public:
       : region_(region), s3_client_(s3_client){};
   virtual ~S3ObjectStore() = default;
 
-  Status create_bucket(const std::string_view &bucket);
+  Status create_bucket(const std::string_view &bucket) override;
 
-  Status delete_bucket(const std::string_view &bucket);
+  Status delete_bucket(const std::string_view &bucket) override;
 
   Status put_object_from_file(const std::string_view &bucket,
                               const std::string_view &key,

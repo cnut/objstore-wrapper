@@ -33,9 +33,9 @@ private:
 
 class ObjectStore {
 public:
-  // virtual Status create_bucket(const std::string_view &bucket);
+  virtual Status create_bucket(const std::string_view &bucket) = 0;
 
-  // virtual Status delete_bucket(const std::string_view &bucket);
+  virtual Status delete_bucket(const std::string_view &bucket) = 0;
 
   virtual Status
   put_object_from_file(const std::string_view &bucket,

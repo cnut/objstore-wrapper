@@ -12,7 +12,7 @@
 #include <string_view>
 #include <sys/errno.h>
 
-std::string_view kBucketName = "glenn-wp";
+std::string_view kBucketName = "glenn-wp"; // change to your bucket
 std::string_view kRegionName = "cn-northwest-1";
 
 std::string format_bytes(uint64_t bytes) {
