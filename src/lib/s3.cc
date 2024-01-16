@@ -3,6 +3,9 @@
 #include <aws/core/Aws.h>
 #include <aws/core/auth/awscredentials.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/model/CreateBucketRequest.h>
+#include <aws/s3/model/DeleteBucketRequest.h>
+#include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <fstream>
@@ -143,6 +146,26 @@ Status S3ObjectStore::list_object(const std::string_view &bucket,
                                   const std::string_view &key,
                                   std::vector<std::string> objects) {
   return Status(-1, "not implemented");
+}
+
+Status S3ObjectStore::delete_object(const std::string_view &bucket,
+                                    const std::string_view &key) {
+  Aws::S3::Model::DeleteObjectRequest request;
+  request.SetBucket(Aws::String(bucket));
+  request.SetKey(Aws::String(key));
+  Aws::S3::Model::DeleteObjectOutcome outcome =
+      s3_client_.DeleteObject(request);
+
+  if (!outcome.IsSuccess()) {
+    const Aws::S3::S3Error &err = outcome.GetError();
+    std::cerr << "Error: DeleteObject: " << err.GetExceptionName() << ": "
+              << err.GetMessage() << std::endl;
+
+    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
+                  outcome.GetError().GetMessage());
+  }
+
+  return Status();
 }
 
 S3ObjectStore *create_s3_objstore(const std::string_view region,

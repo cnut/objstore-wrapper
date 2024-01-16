@@ -25,6 +25,8 @@ public:
   Status list_object(const std::string_view &bucket,
                      const std::string_view &key,
                      std::vector<std::string> objects) override;
+  Status delete_object(const std::string_view &bucket,
+                       const std::string_view &key) override;
 
 private:
   Aws::S3::S3Client s3_client_;

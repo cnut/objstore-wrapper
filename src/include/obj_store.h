@@ -51,6 +51,9 @@ public:
   virtual Status list_object(const std::string_view &bucket,
                              const std::string_view &key,
                              std::vector<std::string> objects) = 0;
+
+  virtual Status delete_object(const std::string_view &bucket,
+                               const std::string_view &key) = 0;
 };
 
 // create ObjectStore based credentials in credentials dir or environment
