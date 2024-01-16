@@ -35,8 +35,7 @@ target_link_directories(s3file
 
 if(WITH_BENCHMARK)
   set(BENCHMARK_FILE
-    bench/get.cc
-    bench/put.cc)
+    bench/put_get.cc)
 
   foreach(sourcefile ${BENCHMARK_FILE})
     get_filename_component(filename ${sourcefile} NAME_WE)
