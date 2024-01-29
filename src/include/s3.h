@@ -51,4 +51,6 @@ S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
                                   const std::string_view *endpoint,
                                   bool useHttps = true);
 
+void destroy_s3_objstore(S3ObjectStore *s3_obj_store);
+
 }; // namespace objstore

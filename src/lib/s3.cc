@@ -252,6 +252,11 @@ S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
 #endif
 }
 
+void destroy_s3_objstore(S3ObjectStore *s3_objstore) {
+  delete s3_objstore;
+  return;
+}
+
 ObjectStore *create_object_store(const std::string_view &provider,
                                  const std::string_view region,
                                  const std::string_view *endpoint,
@@ -275,6 +280,11 @@ ObjectStore *create_object_store(const std::string_view &provider,
 
   return create_s3_objstore(access_key, secret_key, region, endpoint,
                             use_https);
+}
+
+
+void destroy_object_store(ObjectStore *obj_store) {
+  return destroy_s3_objstore(dynamic_cast<S3ObjectStore *>(obj_store));
 }
 
 }; // namespace objstore

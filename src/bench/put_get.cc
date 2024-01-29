@@ -70,7 +70,7 @@ void create_file_put_to_s3_delete_file(std::string_view prefix, size_t fsize,
     obj_store->put_object_from_file(kBucketName, objkey, filepath.c_str());
   }
 
-  delete obj_store;
+  destroy_object_store(obj_store);
   remove_file(filepath);
 }
 
@@ -87,7 +87,7 @@ void get_from_s3_put_file(std::string_view prefix, size_t fsize,
     obj_store->get_object_to_file(kBucketName, obj_key, filepath.c_str());
   }
 
-  delete obj_store;
+  destroy_object_store(obj_store);
 }
 
 void Benchmark_Put32B(benchmark::State &state) {

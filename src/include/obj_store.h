@@ -74,4 +74,6 @@ ObjectStore *create_object_store(const std::string_view &provider,
                                  const std::string_view *endpoint,
                                  bool use_https = true);
 
+void destroy_object_store(ObjectStore *obj_store);
+
 }; // namespace objstore
