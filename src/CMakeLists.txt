@@ -12,10 +12,14 @@ set(INCLUDE_DIRS
 add_library(s3file STATIC "")
 target_sources(s3file
   PRIVATE
+    "lib/local.cc"
+    "lib/obj_store.cc"
     "lib/s3.cc"
 
   # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
     $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
+    "include/local.h"
+    "include/obj_store.h"
     "include/s3.h"
 )
 

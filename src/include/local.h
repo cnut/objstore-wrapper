@@ -1,19 +1,14 @@
-#pragma once
-
 #include <string>
-
-#include <aws/s3/S3Client.h>
 
 #include "obj_store.h"
 
 namespace objstore {
 
-class S3ObjectStore : public ObjectStore {
+class LocalObjectStore : public ObjectStore {
 public:
-  explicit S3ObjectStore(const std::string_view region,
-                         Aws::S3::S3Client &&s3_client)
-      : region_(region), s3_client_(s3_client){};
-  virtual ~S3ObjectStore() = default;
+  explicit LocalObjectStore(const std::string_view basepath)
+      : basepath_(basepath){};
+  virtual ~LocalObjectStore() = default;
 
   Status create_bucket(const std::string_view &bucket) override;
 
@@ -39,20 +34,25 @@ public:
                        const std::string_view &key) override;
 
 private:
-  std::string region_;
-  Aws::S3::S3Client s3_client_;
+  bool is_valid_key(const std::string_view &key);
+  std::string generate_path(const std::string_view &bucket);
+  std::string generate_path(const std::string_view &bucket,
+                            const std::string_view &key);
+
+private:
+  std::string basepath_;
 };
 
-S3ObjectStore *create_s3_objstore(const std::string_view region,
-                                  const std::string_view *endpoint,
-                                  bool useHttps = true);
+LocalObjectStore *create_local_objstore(const std::string_view region,
+                                        const std::string_view *endpoint,
+                                        bool useHttps = true);
 
-S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
-                                  const std::string_view &secret_key,
-                                  const std::string_view region,
-                                  const std::string_view *endpoint,
-                                  bool useHttps = true);
+LocalObjectStore *create_local_objstore(const std::string_view &access_key,
+                                        const std::string_view &secret_key,
+                                        const std::string_view region,
+                                        const std::string_view *endpoint,
+                                        bool useHttps = true);
 
-void destroy_s3_objstore(S3ObjectStore *s3_obj_store);
+void destroy_local_objstore(LocalObjectStore *local_obj_store);
 
 }; // namespace objstore

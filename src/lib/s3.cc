@@ -257,34 +257,4 @@ void destroy_s3_objstore(S3ObjectStore *s3_objstore) {
   return;
 }
 
-ObjectStore *create_object_store(const std::string_view &provider,
-                                 const std::string_view region,
-                                 const std::string_view *endpoint,
-                                 bool use_https) {
-  if (provider != "aws") {
-    return nullptr;
-  }
-
-  return create_s3_objstore(region, endpoint, use_https);
-}
-
-ObjectStore *create_object_store(const std::string_view &provider,
-                                 const std::string_view &access_key,
-                                 const std::string_view &secret_key,
-                                 const std::string_view region,
-                                 const std::string_view *endpoint,
-                                 bool use_https) {
-  if (provider != "aws") {
-    return nullptr;
-  }
-
-  return create_s3_objstore(access_key, secret_key, region, endpoint,
-                            use_https);
-}
-
-
-void destroy_object_store(ObjectStore *obj_store) {
-  return destroy_s3_objstore(dynamic_cast<S3ObjectStore *>(obj_store));
-}
-
 }; // namespace objstore
