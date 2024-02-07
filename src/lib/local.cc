@@ -88,9 +88,9 @@ Status LocalObjectStore::put_object(const std::string_view &bucket,
     return Status(EIO, "Couldn't open file");
   }
 
-  bool ok = !outputFile.write(data.data(), data.size());
+  bool fail = !outputFile.write(data.data(), data.size());
   outputFile.close();
-  return ok ? Status() : Status(EIO, "write fail");
+  return fail ? Status(EIO, "write fail") : Status();
 }
 
 Status LocalObjectStore::get_object(const std::string_view &bucket,
@@ -112,9 +112,9 @@ Status LocalObjectStore::get_object(const std::string_view &bucket,
 
   body.resize(fileSize);
   // if error, just let stl throw exception.
-  bool ok = !inputFile.read(body.data(), body.size());
+  bool fail = !inputFile.read(body.data(), body.size());
   inputFile.close();
-  return ok ? Status() : Status(EIO, "write fail");
+  return fail ? Status(EIO, "read fail") : Status();
 }
 
 Status LocalObjectStore::list_object(const std::string_view &bucket,
