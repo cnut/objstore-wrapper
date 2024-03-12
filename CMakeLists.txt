@@ -12,5 +12,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Benchmark
 option(WITH_BENCHMARK "Build with benchmarks" ON)
 
+include(3rd/s3.cmake)
+
+MYSQL_CHECK_OBJSTORE()
+
+INCLUDE_DIRECTORIES(${OBJSTORE_INCLUDE_DIR})
+LINK_DIRECTORIES(${OBJSTORE_LIBRARY_PATH})
+
 add_subdirectory(3rd)
 add_subdirectory(src)

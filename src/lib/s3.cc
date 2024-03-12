@@ -1,7 +1,7 @@
 #include "s3.h"
 
 #include <aws/core/Aws.h>
-#include <aws/core/auth/awscredentials.h>
+#include <aws/core/auth/AWSCredentials.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/CreateBucketRequest.h>
 #include <aws/s3/model/DeleteBucketRequest.h>
@@ -88,7 +88,7 @@ S3ObjectStore::put_object_from_file(const std::string_view &bucket,
   request.SetKey(Aws::String(key));
 
   std::shared_ptr<Aws::IOStream> inputData =
-      Aws::MakeShared<Aws::FStream>("IOStreamAllocationTag", data_file_name,
+      Aws::MakeShared<Aws::FStream>("IOStreamAllocationTag", data_file_name.data(),
                                     std::ios_base::in | std::ios_base::binary);
 
   if (!*inputData) {
@@ -122,7 +122,7 @@ S3ObjectStore::get_object_to_file(const std::string_view &bucket,
   Status status = get_object(bucket, key, result);
 
   std::shared_ptr<Aws::IOStream> outputStream = Aws::MakeShared<Aws::FStream>(
-      "IOStreamAllocationTag", output_file_name,
+      "IOStreamAllocationTag", output_file_name.data(),
       std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
   outputStream->write(result.c_str(), result.length());
 

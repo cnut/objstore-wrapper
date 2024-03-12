@@ -1,8 +1,11 @@
 link_directories(${CMAKE_BINARY_DIR}/3rd/lib)
 
-set(SERVICE_COMPONENTS s3)
+#set(SERVICE_COMPONENTS s3)
 # Find the AWS SDK for C++ package.
-find_package(AWSSDK REQUIRED COMPONENTS ${SERVICE_COMPONENTS})
+#find_package(AWSSDK REQUIRED COMPONENTS ${SERVICE_COMPONENTS})
+
+INCLUDE_DIRECTORIES(${OBJSTORE_INCLUDE_DIR})
+LINK_DIRECTORIES(${OBJSTORE_LIBRARY_PATH})
 
 set(INCLUDE_DIRS
   "${PROJECT_SOURCE_DIR}/src"
@@ -28,14 +31,11 @@ target_include_directories(s3file SYSTEM PRIVATE "${INCLUDE_DIRS}")
 
 target_link_libraries(s3file
     PUBLIC
-    ${AWSSDK_LINK_LIBRARIES}
+    stdc++fs
+    ${OBJSTORE_LIBRARY}
     ${AWSSDK_PLATFORM_DEPS})
 
-target_link_directories(s3file
-    SYSTEM PRIVATE
-    ${CURL_LIB}
-    ${INCLUDE_DIRS})
-
+add_dependencies(${exename} s3file objstore)
 
 if(WITH_BENCHMARK)
   set(BENCHMARK_FILE
@@ -49,7 +49,6 @@ if(WITH_BENCHMARK)
     target_link_libraries(${exename} PRIVATE s3file benchmark benchmark_main)
     target_include_directories(${exename} SYSTEM PRIVATE
       "${CMAKE_BINARY_DIR}/3rd/include"
-      ${CURL_LIB}
       ${INCLUDE_DIRS})
   endforeach(sourcefile ${BENCHMARKS})
 
