@@ -27,12 +27,6 @@ target_link_libraries(s3file
     ${OBJSTORE_LIBRARIES}
     ${OBJSTORE_PLATFORM_DEPS})
 
-target_link_directories(s3file
-    SYSTEM PRIVATE
-    ${CURL_LIB}
-    ${INCLUDE_DIRS})
-
-
 if(WITH_BENCHMARK)
   set(BENCHMARK_FILE
     bench/put_get.cc)
@@ -45,7 +39,6 @@ if(WITH_BENCHMARK)
     target_link_libraries(${exename} PRIVATE s3file benchmark benchmark_main)
     target_include_directories(${exename} SYSTEM PRIVATE
       "${CMAKE_BINARY_DIR}/3rd/include"
-      ${CURL_LIB}
       ${INCLUDE_DIRS})
   endforeach(sourcefile ${BENCHMARKS})
 
