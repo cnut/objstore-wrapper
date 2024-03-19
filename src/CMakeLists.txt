@@ -1,3 +1,36 @@
+#  std::filesystem is a part of the C++17 standard.
+#  For GNU:
+#    GNU supports std::filesystem (removing it from experimental) starting from 8.0,
+#  but requires additional link -lstdc++fs when using it. Starting from 9.0, using
+#  the std::filesystem no longer requires additional link -lstdc++fs, which has become a part of libstdc++.
+#  Details for: https://gcc.gnu.org/gcc-8/changes.html and https://gcc.gnu.org/gcc-9/changes.html
+#
+#  For LLVM:
+#    LLVM supports std::filesystem starting from 7.0 and requires additional link -lc++fs when using it.
+#  Starting from 9.0, using the std::filesystem no longer requires additional link -lc++fs.
+#  Details for: https://releases.llvm.org/7.0.0/projects/libcxx/docs/UsingLibcxx.html#using-filesystem-and-libc-fs
+#  and https://releases.llvm.org/9.0.0/projects/libcxx/docs/UsingLibcxx.html#using-filesystem
+#
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION LESS 8)
+    message(FATAL_ERROR "Compiler version too low. Require GNU version >= 8")
+  elseif(CMAKE_CXX_COMPILER_VERSION LESS 9)
+    set(NEED_LINK_FS ON)
+    set(FS_LIB_NAME stdc++fs)
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_VERSION LESS 7)
+    message(FATAL_ERROR "Compiler version too low. Require Clang version >= 7")
+  elseif(CMAKE_CXX_COMPILER_VERSION LESS 9)
+    set(NEED_LINK_FS ON)
+    set(FS_LIB_NAME c++fs)
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+  if(CMAKE_CXX_COMPILE_VERSION LESS 11)
+    message(FATAL_ERROR "Compiler version too low. Require Apple Clang version >= 11")
+  endif()
+endif()
+
 link_directories(${CMAKE_BINARY_DIR}/3rd/lib)
 
 set(INCLUDE_DIRS
@@ -25,7 +58,12 @@ target_include_directories(s3file SYSTEM PRIVATE "${INCLUDE_DIRS}")
 target_link_libraries(s3file
     PUBLIC
     ${OBJSTORE_LIBRARIES}
-    ${OBJSTORE_PLATFORM_DEPS})
+    ${OBJSTORE_PLATFORM_DEPS}
+    stdc++fs)
+
+if(NEED_LINK_FS)
+  target_link_libraries(s3file PRIVATE ${FS_LIB_NAME})
+endif()
 
 if(WITH_BENCHMARK)
   set(BENCHMARK_FILE

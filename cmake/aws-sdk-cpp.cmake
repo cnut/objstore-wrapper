@@ -23,7 +23,7 @@ MACRO(PREPARE_BUNDLED_OJBSTORE)
     #GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp.git"
     #GIT_TAG "1.11.283"
     #UPDATE_COMMAND "" # "git submodule update --init --recursive"
-    BUILD_COMMAND cmake -S ${PROJECT_SOURCE_DIR}/3rd/aws-sdk-cpp -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${OBJSTORE_INSTALL_PREFIX} && make -j
+    BUILD_COMMAND cmake -S ${PROJECT_SOURCE_DIR}/3rd/aws-sdk-cpp -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=${OBJSTORE_INSTALL_PREFIX} && make -j
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND cmake --install ${PROJECT_SOURCE_DIR}/3rd/aws-sdk-cpp
   )
