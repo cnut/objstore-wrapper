@@ -58,8 +58,7 @@ target_include_directories(s3file SYSTEM PRIVATE "${INCLUDE_DIRS}")
 target_link_libraries(s3file
     PUBLIC
     ${OBJSTORE_LIBRARIES}
-    ${OBJSTORE_PLATFORM_DEPS}
-    stdc++fs)
+    ${OBJSTORE_PLATFORM_DEPS})
 
 if(NEED_LINK_FS)
   target_link_libraries(s3file PRIVATE ${FS_LIB_NAME})
