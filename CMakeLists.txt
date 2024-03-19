@@ -12,5 +12,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Benchmark
 option(WITH_BENCHMARK "Build with benchmarks" ON)
 
+# CMake Macro
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+INCLUDE(aws-sdk-cpp)
+
+CHECK_PREPARE_OBJSTORE()
+
 add_subdirectory(3rd)
 add_subdirectory(src)
