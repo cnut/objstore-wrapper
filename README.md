@@ -10,7 +10,7 @@ At the same time, in order to facilitate development and testing in local enviro
 
 In addition, this repository also provides a benchmark to facilitate testing the performance of object storage.
 
-# build
+# Build
 
 ```bash
 # prepare the build directory
@@ -22,7 +22,7 @@ cmake ..
 make -j
 ```
 
-# run unit test
+# Run unit test
 ```bash
 cd ${build_path}
 
@@ -61,7 +61,7 @@ export AWS_BUCKET=${replace_with_your_bucket}
 [  PASSED  ] 2 tests.
 ```
 
-# run the benchmark
+# Run the benchmark
 
 ```bash
 cd ${build_path}
