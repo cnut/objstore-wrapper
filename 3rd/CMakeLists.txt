@@ -17,7 +17,6 @@ if(WITH_BENCHMARK)
       benchmark-lib
       SOURCE_DIR "${PROJECT_SOURCE_DIR}/3rd/benchmark"
       URL
-        https://jihulab.com/infracreate-public/sfs-benchmark/-/archive/v1.7.0/sfs-benchmark-v1.7.0.zip
         https://github.com/google/benchmark/archive/refs/tags/v1.7.0.zip
       TIMEOUT 120
       CMAKE_ARGS
@@ -31,4 +30,45 @@ if(WITH_BENCHMARK)
   else()
     add_custom_target(benchmark-lib COMMAND "")
   endif()
+endif()
+
+if(WITH_TESTS)
+  find_library(GTEST_LIBRARY gtest HINTS ${3RD_INSTALL_PREFIX}/lib NO_DEFAULT_PATH)
+
+  if (NOT GTEST_LIBRARY)
+    ExternalProject_Add(
+      gtest-lib
+      SOURCE_DIR "${PROJECT_SOURCE_DIR}/3rd/googletest"
+      URL
+        https://github.com/google/googletest/archive/refs/tags/release-1.12.1.zip
+      TIMEOUT 120
+      CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_GMOCK=OFF
+        -DCMAKE_INSTALL_PREFIX=${3RD_INSTALL_PREFIX}
+        -DCMAKE_INSTALL_LIBDIR=lib
+      BUILD_COMMAND cmake --build .
+    )
+    MESSAGE(STATUS "GTest library not found")
+  else()
+    MESSAGE(STATUS "GTest library found at ${GTEST_LIBRARY}")
+    add_custom_target(gtest-lib COMMAND "")
+  endif()
+endif()
+
+if (NOT GFLAGS_LIBRARY)
+  ExternalProject_Add(
+    gflags-lib
+    SOURCE_DIR "${PROJECT_SOURCE_DIR}/3rd/gflags"
+    URL
+      https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.zip
+    TIMEOUT 120
+    CMAKE_ARGS
+      -DCMAKE_CXX_STANDARD=17
+      -DCMAKE_INSTALL_PREFIX=${3RD_INSTALL_PREFIX}
+      -DCMAKE_INSTALL_LIBDIR=lib
+    BUILD_COMMAND cmake --build .
+  )
+else()
+  add_custom_target(gflags-lib COMMAND "")
 endif()
