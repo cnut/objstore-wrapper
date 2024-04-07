@@ -29,7 +29,7 @@ protected:
                                     FLAGS_use_https);
     ASSERT_NE(objstore_, nullptr);
     Status st = objstore_->delete_bucket(FLAGS_bucket);
-    ASSERT_EQ(st.error_code(), 0)
+    ASSERT_EQ(st.error_code() == 0 || st.error_code() == 404, true)
         << "fail to delete bucket " << st.error_message();
     st = objstore_->create_bucket(FLAGS_bucket);
     ASSERT_EQ(st.error_code(), 0)
