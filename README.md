@@ -46,7 +46,6 @@ export AWS_ACCESS_KEY_ID=${replace_with_your_access_key}
 export AWS_SECRET_ACCESS_KEY=${replace_with_your_secret_key}
 export AWS_REGION=${replace_with_your_region}
 export AWS_BUCKET=${replace_with_your_bucket}
-
 ./src/objstore_test --provider=aws --region=${AWS_REGION} --bucket=${AWS_BUCKET}
 [==========] Running 2 tests from 1 test suite.
 [----------] Global test environment set-up.
@@ -67,28 +66,53 @@ export AWS_BUCKET=${replace_with_your_bucket}
 ```bash
 cd ${build_path}
 
-export AWS_ACCESS_KEY_ID=${replace_with_your_access_key}
-export AWS_SECRET_ACCESS_KEY=${replace_with_your_secret_key}
-
+# local file
 ./src/run_put_get
-2024-03-19T11:24:40+08:00
-Running ./src/run_put_get
-Run on (8 X 2199.99 MHz CPU s)
+2024-04-07T20:22:41+08:00
+Run on (8 X 2200 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x4)
   L1 Instruction 64 KiB (x4)
   L2 Unified 512 KiB (x4)
   L3 Unified 8192 KiB (x1)
-Load Average: 0.09, 0.14, 0.30
+Load Average: 0.12, 0.15, 0.17
 --------------------------------------------------------------------------
 Benchmark                                Time             CPU   Iterations
 --------------------------------------------------------------------------
-Benchmark_Put32B/iterations:10    22860820 ns      2062632 ns           10
-Benchmark_Get32B/iterations:10    12312219 ns      1923766 ns           10
-Benchmark_Put4K/iterations:10     29301010 ns      1804016 ns           10
-Benchmark_Get4K/iterations:10     14785381 ns      1911869 ns           10
-Benchmark_Put2M/iterations:10     71184075 ns     11047759 ns           10
-Benchmark_Get2M/iterations:10     31855399 ns     11215472 ns           10
-Benchmark_Put128M/iterations:10 1228492543 ns    474431809 ns           10
-Benchmark_Get128M/iterations:10 1780746023 ns    603051582 ns           10
+Benchmark_Put32B/iterations:10      673746 ns       116475 ns           10
+Benchmark_Get32B/iterations:10      671033 ns       163809 ns           10
+Benchmark_Put4K/iterations:10       549130 ns       112278 ns           10
+Benchmark_Get4K/iterations:10       594254 ns       151080 ns           10
+Benchmark_Put2M/iterations:10      6257329 ns      1921726 ns           10
+Benchmark_Get2M/iterations:10      6632720 ns      1770679 ns           10
+Benchmark_Put128M/iterations:10  836703031 ns     89330970 ns           10
+Benchmark_Get128M/iterations:10  919419905 ns     91914068 ns           10
+...
+
+
+# aws s3
+export AWS_ACCESS_KEY_ID=${replace_with_your_access_key}
+export AWS_SECRET_ACCESS_KEY=${replace_with_your_secret_key}
+export AWS_REGION=${replace_with_your_region}
+export AWS_BUCKET=${replace_with_your_bucket}
+./src/run_put_get --provider=aws --region=${AWS_REGION} --bucket=${AWS_BUCKET}
+2024-04-07T20:25:56+08:00
+Run on (8 X 2200 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x4)
+  L1 Instruction 64 KiB (x4)
+  L2 Unified 512 KiB (x4)
+  L3 Unified 8192 KiB (x1)
+Load Average: 0.17, 0.22, 0.20
+--------------------------------------------------------------------------
+Benchmark                                Time             CPU   Iterations
+--------------------------------------------------------------------------
+Benchmark_Put32B/iterations:10    22222298 ns      2051112 ns           10
+Benchmark_Get32B/iterations:10    11883256 ns      1885276 ns           10
+Benchmark_Put4K/iterations:10     31041540 ns      1886112 ns           10
+Benchmark_Get4K/iterations:10     16202092 ns      1963213 ns           10
+Benchmark_Put2M/iterations:10     83472982 ns     10209276 ns           10
+Benchmark_Get2M/iterations:10     33561795 ns     11899454 ns           10
+Benchmark_Put128M/iterations:10 1177425063 ns    526843469 ns           10
+Benchmark_Get128M/iterations:10 1800414391 ns    578817779 ns           10
 ```

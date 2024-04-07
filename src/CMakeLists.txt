@@ -72,8 +72,8 @@ if(WITH_BENCHMARK)
     get_filename_component(filename ${sourcefile} NAME_WE)
     set(exename run_${filename})
     add_executable(${exename} ${sourcefile})
-    add_dependencies(${exename} s3file benchmark-lib)
-    target_link_libraries(${exename} PRIVATE s3file benchmark benchmark_main)
+    add_dependencies(${exename} s3file benchmark-lib gflags-lib)
+    target_link_libraries(${exename} PRIVATE s3file benchmark gflags)
     target_include_directories(${exename} SYSTEM PRIVATE
       "${CMAKE_BINARY_DIR}/3rd/include"
       ${INCLUDE_DIRS})

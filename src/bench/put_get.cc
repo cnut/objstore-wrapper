@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "benchmark/benchmark.h"
+#include "gflags/gflags.h"
 
 #include "objstore.h"
 
@@ -12,8 +13,17 @@
 #include <string_view>
 #include <sys/errno.h>
 
-std::string_view kBucketName = "glenn-wp"; // change to your bucket
-std::string_view kRegionName = "cn-northwest-1";
+DEFINE_string(provider, "local",
+              "provider of objstore, only support local or aws");
+DEFINE_string(region, "/tmp/",
+              "region of the objstore, direcotry for local objstore");
+DEFINE_string(endpoint, "",
+              "endpoint, which will be ignoreed by local objstore");
+DEFINE_bool(
+    use_https, false,
+    "whether to use https or not, which will be ignored by local objstore");
+DEFINE_string(bucket, "test_bucket",
+              "bucket, which will be used for this test");
 
 std::string format_bytes(uint64_t bytes) {
   uint64_t size = static_cast<double>(bytes);
@@ -62,12 +72,12 @@ void create_file_put_to_s3_delete_file(std::string_view prefix, size_t fsize,
   int ret = create_file(filepath, fsize);
   assert(ret == 0);
 
-  objstore::ObjectStore *obj_store =
-      objstore::create_object_store("aws", kRegionName, nullptr, false);
+  objstore::ObjectStore *obj_store = objstore::create_object_store(
+      FLAGS_provider, FLAGS_region, nullptr, false);
   assert(obj_store != nullptr);
 
   for ([[maybe_unused]] auto _ : state) {
-    obj_store->put_object_from_file(kBucketName, objkey, filepath.c_str());
+    obj_store->put_object_from_file(FLAGS_bucket, objkey, filepath.c_str());
   }
 
   destroy_object_store(obj_store);
@@ -79,12 +89,12 @@ void get_from_s3_put_file(std::string_view prefix, size_t fsize,
   const std::string obj_key(assemble_file_path(prefix, fsize));
   const std::string filepath = obj_key + ".s3";
 
-  objstore::ObjectStore *obj_store =
-      objstore::create_object_store("aws", kRegionName, nullptr, false);
+  objstore::ObjectStore *obj_store = objstore::create_object_store(
+      FLAGS_provider, FLAGS_region, nullptr, false);
   assert(obj_store != nullptr);
 
   for ([[maybe_unused]] auto _ : state) {
-    obj_store->get_object_to_file(kBucketName, obj_key, filepath.c_str());
+    obj_store->get_object_to_file(FLAGS_bucket, obj_key, filepath.c_str());
   }
 
   destroy_object_store(obj_store);
@@ -140,3 +150,9 @@ BENCHMARK(Benchmark_Put128M)->Iterations(10);
 BENCHMARK(Benchmark_Get128M)->Iterations(10);
 BENCHMARK(Benchmark_Put2G)->Iterations(10);
 BENCHMARK(Benchmark_Get2G)->Iterations(10);
+
+int main(int argc, char **argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  benchmark::RunSpecifiedBenchmarks();
+  return 0;
+}
