@@ -1,3 +1,15 @@
+# Introduction
+The S3 interface has become the de facto standard for object storage,
+and most object storage will be compatible with the S3 interface.
+
+AWS provides [aws-sdk-cpp](https://github.com/aws/aws-sdk-cpp.git) to help application programs to manipulate S3 objects.
+But it is relatively cumbersome to use aws-sdk-cpp directly.
+This repository provides an S3 wrapper to reduce the development complexity for C++ programmer when he/she tries to use S3-like object storage.
+
+At the same time, in order to facilitate development and testing in local environment, this repository provides a local object store emulated by local file.
+
+In addition, this repository also provides a benchmark to facilitate testing the performance of object storage.
+
 # build
 
 ```bash
