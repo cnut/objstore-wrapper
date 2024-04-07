@@ -1,10 +1,28 @@
-#include "local.h"
+/*
+   Copyright (c) 2024, ApeCloud Inc Holding Limited.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 of the License.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
+
+#include "mysys/objstore/local.h"
+
+#include <assert.h>
+#include <sys/errno.h>
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sys/errno.h>
 #include <system_error>
 
 namespace objstore {
@@ -15,19 +33,28 @@ namespace {
 
 int mkdir_p(std::string_view path) {
   std::error_code errcode;
-  bool created = fs::create_directories(path, errcode);
+  fs::create_directories(path, errcode);
+  // bool created = fs::create_directories(path, errcode);
+  //  assert(created);
   return errcode.value();
 }
 
 int rm_f(std::string_view path) {
   std::error_code errcode;
-  bool created = fs::remove_all(path, errcode);
+  fs::remove_all(path, errcode);
+  // bool deleted = fs::remove_all(path, errcode);
+  // assert(deleted);
   return errcode.value();
 }
 
-} // anonymous namespace
+// if the path is invalid, an execption will be throw
+bool is_dir_empty(std::string_view path) { return fs::is_empty(path); }
+
+}  // anonymous namespace
 
 Status LocalObjectStore::create_bucket(const std::string_view &bucket) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(bucket)) {
     return Status(EINVAL, "invalid bucket");
   }
@@ -37,6 +64,8 @@ Status LocalObjectStore::create_bucket(const std::string_view &bucket) {
 }
 
 Status LocalObjectStore::delete_bucket(const std::string_view &bucket) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(bucket)) {
     return Status(EINVAL, "invalid bucket");
   }
@@ -45,32 +74,38 @@ Status LocalObjectStore::delete_bucket(const std::string_view &bucket) {
   return Status(ret, std::generic_category().message(ret));
 }
 
-Status
-LocalObjectStore::put_object_from_file(const std::string_view &bucket,
-                                       const std::string_view &key,
-                                       const std::string_view &data_file_name) {
+Status LocalObjectStore::put_object_from_file(
+    const std::string_view &bucket, const std::string_view &key,
+    const std::string_view &data_file_path) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(key)) {
     return Status(EINVAL, "invalid key");
   }
 
   std::string key_path = generate_path(bucket, key);
+  // key may contains '/', so if its parent directory does not exists, we create
+  // for it.
+  int ret = mkdir_p(fs::path(key_path).parent_path().native());
+  assert(!ret);
   std::error_code errcode;
-  fs::copy(data_file_name, key_path, fs::copy_options::overwrite_existing,
+  fs::copy(data_file_path, key_path, fs::copy_options::overwrite_existing,
            errcode);
   return Status(errcode.value(), errcode.message());
 }
 
-Status
-LocalObjectStore::get_object_to_file(const std::string_view &bucket,
-                                     const std::string_view &key,
-                                     const std::string_view &output_file_name) {
+Status LocalObjectStore::get_object_to_file(
+    const std::string_view &bucket, const std::string_view &key,
+    const std::string_view &output_file_path) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(key)) {
     return Status(EINVAL, "invalid key");
   }
 
   std::string key_path = generate_path(bucket, key);
   std::error_code errcode;
-  fs::copy(key_path, output_file_name, fs::copy_options::overwrite_existing,
+  fs::copy(key_path, output_file_path, fs::copy_options::overwrite_existing,
            errcode);
   return Status(errcode.value(), errcode.message());
 }
@@ -78,75 +113,114 @@ LocalObjectStore::get_object_to_file(const std::string_view &bucket,
 Status LocalObjectStore::put_object(const std::string_view &bucket,
                                     const std::string_view &key,
                                     const std::string_view &data) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(key)) {
     return Status(EINVAL, "invalid key");
   }
 
   std::string key_path = generate_path(bucket, key);
-  std::ofstream outputFile(key_path, std::ios::binary | std::ios::trunc);
-  if (!outputFile) {
+  // key may contains '/', so if its parent directory does not exists, we create
+  // for it.
+  int ret = mkdir_p(fs::path(key_path).parent_path().native());
+  assert(!ret);
+  std::ofstream output_file(key_path, std::ios::binary | std::ios::trunc);
+  if (!output_file) {
     return Status(EIO, "Couldn't open file");
   }
 
-  bool fail = !outputFile.write(data.data(), data.size());
-  outputFile.close();
+  bool fail = !output_file.write(data.data(), data.size());
+  output_file.close();
   return fail ? Status(EIO, "write fail") : Status();
 }
 
 Status LocalObjectStore::get_object(const std::string_view &bucket,
                                     const std::string_view &key,
                                     std::string &body) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(key)) {
     return Status(EINVAL, "invalid key");
   }
 
   std::string key_path = generate_path(bucket, key);
-  std::ifstream inputFile(key_path, std::ios::binary);
-  if (!inputFile) {
+  std::ifstream input_file(key_path, std::ios::binary);
+  if (!input_file) {
     return Status(EIO, "Couldn't open file");
   }
 
-  inputFile.seekg(0, std::ios::end);
-  std::streamsize fileSize = inputFile.tellg();
-  inputFile.seekg(0, std::ios::beg);
+  input_file.seekg(0, std::ios::end);
+  std::streamsize fileSize = input_file.tellg();
+  input_file.seekg(0, std::ios::beg);
 
   body.resize(fileSize);
-  // if error, just let stl throw exception.
-  bool fail = !inputFile.read(body.data(), body.size());
-  inputFile.close();
+  bool fail = !input_file.read(body.data(), body.size());
+  input_file.close();
   return fail ? Status(EIO, "read fail") : Status();
 }
 
 Status LocalObjectStore::list_object(const std::string_view &bucket,
-                                     const std::string_view &key,
-                                     std::vector<std::string> objects) {
+                                     const std::string_view &key
+                                     [[maybe_unused]],
+                                     std::vector<std::string> &objects) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   std::string bucket_path = generate_path(bucket);
   objects.clear();
-  for (const auto &entry : fs::directory_iterator(bucket_path)) {
+  for (const auto &entry : fs::recursive_directory_iterator(bucket_path)) {
     if (fs::is_directory(entry)) {
-      std::cerr << "encounter a directory: " << entry.path()
-                << ", some error happened" << std::endl;
-      abort();
+      // when we encounter an dir, it should have some child, otherwise there
+      // is some error.
+      assert(!is_dir_empty(std::string_view(entry.path().c_str())));
     } else if (fs::is_regular_file(entry)) {
-      objects.push_back(entry.path().filename().string());
+      // use lexically_relative() to remove the bucket prefix
+      // example: entry: bucket/key_prefix_dir/key -> key_prefix_dir/key
+      objects.push_back(entry.path().lexically_relative(bucket_path).c_str());
     }
   }
-  return Status(-1, "not implemented");
+  return Status();
 }
 
 Status LocalObjectStore::delete_object(const std::string_view &bucket,
                                        const std::string_view &key) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
   if (!is_valid_key(key)) {
     return Status(EINVAL, "invalid key");
   }
 
-  std::string key_path = generate_path(bucket, key);
-  int ret = rm_f(key_path);
-  return Status(ret, std::generic_category().message(ret));
+  const std::string key_path_str = generate_path(bucket, key);
+  const std::string bucket_path_str = generate_path(bucket);
+  bool key_parent = false;
+
+  fs::path key_path = fs::path(key_path_str);
+  while (key_path.native().size() > bucket_path_str.size()) {
+    assert(fs::is_directory(key_path) == key_parent);
+    int ret = rm_f(key_path.c_str());
+    if (ret != 0) {
+      if (key_parent) {
+        // delete the child file successfully, but failed to delete the parent.
+        abort();
+      } else {
+        return Status(ret, std::generic_category().message(ret));
+      }
+    }
+
+    key_path = key_path.parent_path();
+    key_parent = true;
+
+    // if this entry is the last entry in the parent directory, we need to
+    // remove the parent directory in a recursive way.
+    if (!is_dir_empty(std::string_view(key_path.c_str()))) {
+      break;
+    }
+  }
+  return Status();
 }
 
 bool LocalObjectStore::is_valid_key(const std::string_view &key) {
-  return key.find('/') == std::string::npos;
+  // key in s3, should be no more than 1024 bytes.
+  return key.size() > 0 && key.size() <= 1024;
 }
 
 std::string LocalObjectStore::generate_path(const std::string_view &bucket) {
@@ -161,8 +235,9 @@ std::string LocalObjectStore::generate_path(const std::string_view &bucket,
 }
 
 LocalObjectStore *create_local_objstore(const std::string_view region,
-                                        const std::string_view *endpoint,
-                                        bool use_https) {
+                                        const std::string_view *endpoint
+                                        [[maybe_unused]],
+                                        bool use_https [[maybe_unused]]) {
   int ret = mkdir_p(region);
   if (ret != 0) {
     return nullptr;
@@ -178,8 +253,10 @@ LocalObjectStore *create_local_objstore(const std::string_view region,
   return lobs;
 }
 
-LocalObjectStore *create_local_objstore(const std::string_view &access_key,
-                                        const std::string_view &secret_key,
+LocalObjectStore *create_local_objstore(const std::string_view &access_key
+                                        [[maybe_unused]],
+                                        const std::string_view &secret_key
+                                        [[maybe_unused]],
                                         const std::string_view region,
                                         const std::string_view *endpoint,
                                         bool use_https) {
@@ -187,8 +264,11 @@ LocalObjectStore *create_local_objstore(const std::string_view &access_key,
 }
 
 void destroy_local_objstore(LocalObjectStore *local_objstore) {
-  delete local_objstore;
+  if (local_objstore) {
+    delete local_objstore;
+  }
   // keep the data there.
   return;
 }
-}; // namespace objstore
+
+}  // namespace objstore

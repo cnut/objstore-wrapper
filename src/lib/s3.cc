@@ -1,4 +1,20 @@
-#include "s3.h"
+/*
+   Copyright (c) 2024, ApeCloud Inc Holding Limited.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 of the License.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
+
+#include "mysys/objstore/s3.h"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentials.h>
@@ -8,6 +24,7 @@
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
+#include <errno.h>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -31,28 +48,23 @@ public:
 
 S3ApiGlobalOption g_aws_api_option_initializor;
 
-}; // namespace
+}  // namespace
 
 Status S3ObjectStore::create_bucket(const std::string_view &bucket) {
   Aws::S3::Model::CreateBucketRequest request;
   request.SetBucket(std::string(bucket));
 
-  if (region_ != "us-east-1") {
-    Aws::S3::Model::CreateBucketConfiguration createBucketConfig;
-    createBucketConfig.SetLocationConstraint(
-        Aws::S3::Model::BucketLocationConstraintMapper::
-            GetBucketLocationConstraintForName(region_));
-    request.SetCreateBucketConfiguration(createBucketConfig);
-  }
+  Aws::S3::Model::CreateBucketConfiguration createBucketConfig;
+  createBucketConfig.SetLocationConstraint(
+      Aws::S3::Model::BucketLocationConstraintMapper::
+          GetBucketLocationConstraintForName(region_));
+  request.SetCreateBucketConfiguration(createBucketConfig);
 
   Aws::S3::Model::CreateBucketOutcome outcome =
       s3_client_.CreateBucket(request);
   if (!outcome.IsSuccess()) {
-    auto err = outcome.GetError();
-    std::cerr << "Error: CreateBucket: " << err.GetExceptionName() << ": "
-              << err.GetMessage() << std::endl;
-    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
-                  outcome.GetError().GetMessage());
+    const Aws::S3::S3Error &err = outcome.GetError();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
   }
 
   return Status();
@@ -67,64 +79,57 @@ Status S3ObjectStore::delete_bucket(const std::string_view &bucket) {
 
   if (!outcome.IsSuccess()) {
     const Aws::S3::S3Error &err = outcome.GetError();
-    std::cerr << "Error: DeleteBucket: " << err.GetExceptionName() << ": "
-              << err.GetMessage() << std::endl;
-    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
-                  outcome.GetError().GetMessage());
-  } else {
-    // std::cout << "The bucket was deleted" << std::endl;
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
   }
 
   return Status();
 }
 
-Status
-S3ObjectStore::put_object_from_file(const std::string_view &bucket,
-                                    const std::string_view &key,
-                                    const std::string_view &data_file_name) {
-
+Status S3ObjectStore::put_object_from_file(
+    const std::string_view &bucket, const std::string_view &key,
+    const std::string_view &data_file_path) {
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(Aws::String(bucket));
   request.SetKey(Aws::String(key));
 
-  std::shared_ptr<Aws::IOStream> inputData = Aws::MakeShared<Aws::FStream>(
-      "IOStreamAllocationTag", data_file_name.data(),
+  std::shared_ptr<Aws::IOStream> input_data = Aws::MakeShared<Aws::FStream>(
+      "IOStreamAllocationTag", data_file_path.data(),
       std::ios_base::in | std::ios_base::binary);
 
-  if (!*inputData) {
-    std::cerr << "Error unable to read file " << data_file_name << std::endl;
-    return Status(-1, "Error unable to read file");
+  if (!*input_data) {
+    return Status(EIO, "Error unable to open input file");
   }
 
-  request.SetBody(inputData);
+  request.SetBody(input_data);
 
   Aws::S3::Model::PutObjectOutcome outcome = s3_client_.PutObject(request);
 
   if (!outcome.IsSuccess()) {
-    std::cerr << "Error: PutObject: " << outcome.GetError().GetMessage()
-              << std::endl;
-    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
-                  outcome.GetError().GetMessage());
-  } else {
-    // std::cout << "Added object '" << fileName << "' to bucket '" <<
-    // bucketName
-    //           << "'.";
+    const Aws::S3::S3Error &err = outcome.GetError();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
   }
 
   return Status();
 }
 
-Status
-S3ObjectStore::get_object_to_file(const std::string_view &bucket,
-                                  const std::string_view &key,
-                                  const std::string_view &output_file_name) {
+Status S3ObjectStore::get_object_to_file(
+    const std::string_view &bucket, const std::string_view &key,
+    const std::string_view &output_file_path) {
   std::string result;
   Status status = get_object(bucket, key, result);
 
-  std::shared_ptr<Aws::IOStream> outputStream = Aws::MakeShared<Aws::FStream>(
-      "IOStreamAllocationTag", output_file_name.data(),
+  std::shared_ptr<Aws::IOStream> output_stream = Aws::MakeShared<Aws::FStream>(
+      "IOStreamAllocationTag", output_file_path.data(),
       std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
-  outputStream->write(result.c_str(), result.length());
+  if (!*output_stream) {
+    return Status(EIO, "Error unable to open output file");
+  }
+
+  bool fail =
+      output_stream->write(result.c_str(), result.length()).flush().fail();
+  if (fail) {
+    return Status(EIO, "unable to write key's value into file");
+  }
 
   return Status();
 }
@@ -135,29 +140,25 @@ Status S3ObjectStore::put_object(const std::string_view &bucket,
 
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(Aws::String(bucket));
-  // We are using the name of the file as the key for the object in the
-  // bucket. However, this is just a string_view and can be set according to
-  // your retrieval needs.
   request.SetKey(Aws::String(key));
 
-  const std::shared_ptr<Aws::IOStream> inputData =
+  const std::shared_ptr<Aws::IOStream> data_stream =
       Aws::MakeShared<Aws::StringStream>("SStreamAllocationTag");
-
-  if (!*inputData) {
-    std::cerr << "Error to create string stream buf" << std::endl;
-    return Status(-1, "Error unable to read file");
+  if (!*data_stream) {
+    return Status(EIO, "unable to create data stream to hold input data");
   }
 
-  *inputData << data;
-  request.SetBody(inputData);
+  *data_stream << data;
+  if (!*data_stream) {
+    return Status(EIO, "unable to write data into data stream");
+  }
+
+  request.SetBody(data_stream);
 
   Aws::S3::Model::PutObjectOutcome outcome = s3_client_.PutObject(request);
-
   if (!outcome.IsSuccess()) {
-    std::cerr << "Error: PutObject: " << outcome.GetError().GetMessage()
-              << std::endl;
-    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
-                  outcome.GetError().GetMessage());
+    const Aws::S3::S3Error &err = outcome.GetError();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
   }
 
   return Status();
@@ -173,23 +174,23 @@ Status S3ObjectStore::get_object(const std::string_view &bucket,
 
   if (!outcome.IsSuccess()) {
     const Aws::S3::S3Error &err = outcome.GetError();
-    std::cerr << "Error: GetObject: " << err.GetExceptionName() << ": "
-              << err.GetMessage() << std::endl;
-
-    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
-                  outcome.GetError().GetMessage());
-  } else {
-    std::ostringstream oss;
-    oss << outcome.GetResult().GetBody().rdbuf();
-    body = oss.str();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
   }
+
+  std::ostringstream oss;
+  oss << outcome.GetResult().GetBody().rdbuf();
+  if (!oss) {
+    return Status(EIO, "unable to read data from response stream");
+  }
+
+  body = oss.str();
 
   return Status();
 }
 
-Status S3ObjectStore::list_object(const std::string_view &bucket,
-                                  const std::string_view &key,
-                                  std::vector<std::string> objects) {
+Status S3ObjectStore::list_object(const std::string_view &bucket [[maybe_unused]],
+                                  const std::string_view &key [[maybe_unused]],
+                                  std::vector<std::string> &objects [[maybe_unused]]) {
   return Status(-1, "not implemented");
 }
 
@@ -203,11 +204,7 @@ Status S3ObjectStore::delete_object(const std::string_view &bucket,
 
   if (!outcome.IsSuccess()) {
     const Aws::S3::S3Error &err = outcome.GetError();
-    std::cerr << "Error: DeleteObject: " << err.GetExceptionName() << ": "
-              << err.GetMessage() << std::endl;
-
-    return Status(static_cast<int>(outcome.GetError().GetResponseCode()),
-                  outcome.GetError().GetMessage());
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
   }
 
   return Status();
@@ -227,34 +224,11 @@ S3ObjectStore *create_s3_objstore(const std::string_view region,
   return new S3ObjectStore(region, std::move(client));
 }
 
-S3ObjectStore *create_s3_objstore(const std::string_view &access_key,
-                                  const std::string_view &secret_key,
-                                  const std::string_view region,
-                                  const std::string_view *endpoint,
-                                  bool use_https) {
-#if 0
-  Aws::Auth::AWSCredentials credentials(std::string(access_key),
-                                        std::string(secret_key));
-
-  Aws::Client::ClientConfiguration clientConfig;
-  clientConfig.region = region;
-  if (endpoint != nullptr) {
-    clientConfig.endpointOverride = *endpoint;
-  }
-  clientConfig.scheme =
-      use_https ? Aws::Http::Scheme::HTTPS : Aws::Http::Scheme::HTTP;
-
-  Aws::S3::S3Client s3_client(credentials, clientConfig);
-
-  return new S3ObjectStore(region, std::move(s3_client));
-#else
-  return nullptr;
-#endif
-}
-
 void destroy_s3_objstore(S3ObjectStore *s3_objstore) {
-  delete s3_objstore;
+  if (s3_objstore) {
+    delete s3_objstore;
+  }
   return;
 }
 
-}; // namespace objstore
+}  // namespace objstore
