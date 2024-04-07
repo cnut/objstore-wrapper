@@ -43,13 +43,14 @@ add_dependencies(s3file objstore-ext-proj benchmark-lib)
 target_sources(s3file
   PRIVATE
     "lib/local.cc"
-    "lib/obj_store.cc"
+    "lib/local.h"
+    "lib/objstore.cc"
     "lib/s3.cc"
+    "lib/s3.h"
 
-  # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
+    # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
     $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
-    "include/local.h"
-    "include/obj_store.h"
+    "include/objstore.h"
     "include/s3.h"
 )
 
