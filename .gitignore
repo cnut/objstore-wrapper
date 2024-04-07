@@ -1,5 +1,9 @@
 .cache
-build
-3rd/benchmark
-
 .vscode
+
+build
+
+3rd/benchmark
+3rd/aws-sdk-cpp
+3rd/gflags
+3rd/googletest
