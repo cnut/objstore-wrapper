@@ -5,7 +5,7 @@
 
 namespace objstore {
 
-DEFINE_string(provider, "file",
+DEFINE_string(provider, "local",
               "provider of objstore, only support local or aws");
 DEFINE_string(region, "/tmp/",
               "region of the objstore, direcotry for local objstore");
@@ -27,6 +27,13 @@ protected:
     objstore_ = create_object_store(FLAGS_provider, FLAGS_region,
                                     endpoint.size() == 0 ? nullptr : &endpoint,
                                     FLAGS_use_https);
+    ASSERT_NE(objstore_, nullptr);
+    Status st = objstore_->delete_bucket(FLAGS_bucket);
+    ASSERT_EQ(st.error_code(), 0)
+        << "fail to delete bucket " << st.error_message();
+    st = objstore_->create_bucket(FLAGS_bucket);
+    ASSERT_EQ(st.error_code(), 0)
+        << "fail to create ebucket " << st.error_message();
   }
 
   void TearDown() override {
@@ -56,7 +63,7 @@ TEST_F(ObjstoreTest, PutGetDeleteMeta) {
       << "fail to get object meta " << st.error_message();
   ASSERT_EQ(meta.key, key);
   ASSERT_GT(meta.last_modified, 0);
-  ASSERT_GT(meta.size, value.size());
+  ASSERT_EQ(meta.size, value.size());
 
   st = objstore_->delete_object(FLAGS_bucket, key);
   ASSERT_EQ(st.error_code(), 0)

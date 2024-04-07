@@ -2,6 +2,7 @@
 .vscode
 
 build
+_build
 
 3rd/benchmark
 3rd/aws-sdk-cpp
