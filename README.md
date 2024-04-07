@@ -1,18 +1,58 @@
 # build
 
-```
+```bash
 # prepare the build directory
 mkdir build
 cd build
 
 # config by CMake then build it
 cmake ..
-build -j
+make -j
+```
+
+# run unit test
+```bash
+cd ${build_path}
+
+# run unittest on object store emulated by local filesystem
+./src/objstore_test
+[==========] Running 2 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 2 tests from ObjstoreTest
+[ RUN      ] ObjstoreTest.PutGetDeleteMeta
+[       OK ] ObjstoreTest.PutGetDeleteMeta (0 ms)
+[ RUN      ] ObjstoreTest.List
+[       OK ] ObjstoreTest.List (18 ms)
+[----------] 2 tests from ObjstoreTest (18 ms total)
+
+[----------] Global test environment tear-down
+[==========] 2 tests from 1 test suite ran. (18 ms total)
+[  PASSED  ] 2 tests.
+
+# run unittest on real s3 object store
+export AWS_ACCESS_KEY_ID=${replace_with_your_access_key}
+export AWS_SECRET_ACCESS_KEY=${replace_with_your_secret_key}
+export AWS_REGION=${replace_with_your_region}
+export AWS_BUCKET=${replace_with_your_bucket}
+
+./src/objstore_test --provider=aws --region=${AWS_REGION} --bucket=${AWS_BUCKET}
+[==========] Running 2 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 2 tests from ObjstoreTest
+[ RUN      ] ObjstoreTest.PutGetDeleteMeta
+[       OK ] ObjstoreTest.PutGetDeleteMeta (662 ms)
+[ RUN      ] ObjstoreTest.List
+[       OK ] ObjstoreTest.List (4819 ms)
+[----------] 2 tests from ObjstoreTest (5481 ms total)
+
+[----------] Global test environment tear-down
+[==========] 2 tests from 1 test suite ran. (5481 ms total)
+[  PASSED  ] 2 tests.
 ```
 
 # run the benchmark
 
-```
+```bash
 cd ${build_path}
 
 export AWS_ACCESS_KEY_ID=${replace_with_your_access_key}

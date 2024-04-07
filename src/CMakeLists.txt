@@ -39,18 +39,18 @@ set(INCLUDE_DIRS
 )
 
 add_library(s3file STATIC "")
-add_dependencies(s3file objstore-ext-proj benchmark-lib)
+add_dependencies(s3file aws-sdk-cpp-ext-proj benchmark-lib)
 target_sources(s3file
   PRIVATE
     "lib/local.cc"
-    "lib/obj_store.cc"
+    "lib/local.h"
+    "lib/objstore.cc"
     "lib/s3.cc"
+    "lib/s3.h"
 
-  # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
+    # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
     $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
-    "include/local.h"
-    "include/obj_store.h"
-    "include/s3.h"
+    "include/objstore.h"
 )
 
 target_include_directories(s3file SYSTEM PRIVATE "${INCLUDE_DIRS}")
@@ -80,3 +80,28 @@ if(WITH_BENCHMARK)
   endforeach(sourcefile ${BENCHMARKS})
 
 endif(WITH_BENCHMARK)
+
+if(WITH_TESTS)
+  set(TESTS_FILE
+    lib/objstore_test.cc)
+
+  foreach (sourcefile ${TESTS_FILE})
+    get_filename_component(exename ${sourcefile} NAME_WE)
+    add_executable(${exename} ${sourcefile})
+    set_target_properties(${exename}
+      PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+      EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+      EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+      OUTPUT_NAME ${exename}
+      )
+
+    add_dependencies(${exename} s3file gtest-lib gflags-lib)
+    target_link_libraries(${exename} PRIVATE s3file gtest gflags)
+    # Only test cases need gtests' header
+    target_include_directories(${exename} SYSTEM PRIVATE
+      "${CMAKE_BINARY_DIR}/3rd/include"
+      ${INCLUDE_DIRS})
+    add_test(NAME run_${exename} COMMAND ${exename})
+  endforeach(sourcefile ${TESTS})
+
+endif(WITH_TESTS)
