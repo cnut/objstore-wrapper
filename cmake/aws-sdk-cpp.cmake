@@ -14,19 +14,30 @@ MACRO(SHOW_OBJSTORE_INFO)
 ENDMACRO()
 
 MACRO(PREPARE_BUNDLED_OJBSTORE)
-  SET(OBJSTORE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/aws-sdk-cpp")
+  SET(OBJSTORE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/3rd/aws-sdk-cpp")
 
   INCLUDE(ExternalProject)
   ExternalProject_Add(
-    objstore-ext-proj
+    aws-sdk-cpp-ext-proj
     SOURCE_DIR "${PROJECT_SOURCE_DIR}/3rd/aws-sdk-cpp"
     GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp.git"
     GIT_TAG "1.11.283"
-    UPDATE_COMMAND "git submodule update --init --recursive"
-    BUILD_COMMAND cmake -S ${PROJECT_SOURCE_DIR}/3rd/aws-sdk-cpp -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=${OBJSTORE_INSTALL_PREFIX} && make -j
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND cmake --install ${PROJECT_SOURCE_DIR}/3rd/aws-sdk-cpp
+    UPDATE_COMMAND "" #git submodule update --init --recursive
+    # TODO: build with static lib
+    CMAKE_ARGS
+      -DCMAKE_BUILD_TYPE=Release
+      -DBUILD_ONLY=s3
+      -DBUILD_SHARED_LIBS=ON
+      -DCMAKE_INSTALL_PREFIX=${OBJSTORE_INSTALL_PREFIX}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -DENABLE_TESTING=OFF
+      -DAUTORUN_UNIT_TESTS=OFF
+    BUILD_ALWAYS      TRUE
+    TEST_COMMAND      ""
   )
+
+  # compilation result installation is later phase, mkdir include path in advance avoid compile error.
+  FILE(MAKE_DIRECTORY "${OBJSTORE_INSTALL_PREFIX}/include")
 ENDMACRO()
 
 MACRO(FIND_SYSTEM_OBJSTORE)
@@ -50,12 +61,12 @@ MACRO (CHECK_PREPARE_OBJSTORE)
     SET(OBJSTORE_PLATFORM_DEPS "pthread;curl")
     # Prepare include and ld path
     INCLUDE_DIRECTORIES(${OBJSTORE_INCLUDE_DIR})
-    LINK_DIRECTORIES(${OBJSTORE_LIBRARY_PATH}) 
+    LINK_DIRECTORIES(${OBJSTORE_LIBRARY_PATH})
   ELSEIF(WITH_OBJSTOR STREQUAL "system")
     MESSAGE(STATUS "WITH_OBJSTOR is system, use system aws s3 lib")
     FIND_SYSTEM_OBJSTORE()
-    # avoid error when add_dependencies(objstore-ext-proj) in the main project
-    ADD_CUSTOM_TARGET(objstore-ext-proj COMMAND "")
+    # avoid error when add_dependencies(aws-sdk-cpp-ext-proj) in the main project
+    ADD_CUSTOM_TARGET(aws-sdk-cpp-ext-proj COMMAND "")
     SET(OBJSTORE_LIBRARY ${AWSSDK_LINK_LIBRARIES})
     SET(OBJSTORE_PLATFORM_DEPS ${OBJSTORE_PLATFORM_DEPS})
   ELSE()

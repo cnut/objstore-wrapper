@@ -39,7 +39,7 @@ set(INCLUDE_DIRS
 )
 
 add_library(s3file STATIC "")
-add_dependencies(s3file objstore-ext-proj benchmark-lib)
+add_dependencies(s3file aws-sdk-cpp-ext-proj benchmark-lib)
 target_sources(s3file
   PRIVATE
     "lib/local.cc"
@@ -51,7 +51,6 @@ target_sources(s3file
     # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
     $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
     "include/objstore.h"
-    "include/s3.h"
 )
 
 target_include_directories(s3file SYSTEM PRIVATE "${INCLUDE_DIRS}")
