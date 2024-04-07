@@ -1,6 +1,8 @@
 #include "local.h"
 
 #include <assert.h>
+#include <cerrno>
+#include <chrono>
 #include <sys/errno.h>
 
 #include <cstdlib>
@@ -33,6 +35,29 @@ int rm_f(std::string_view path) {
 
 // if the path is invalid, an execption will be throw
 bool is_dir_empty(std::string_view path) { return fs::is_empty(path); }
+
+int get_obj_meta_from_file(fs::path path, ObjectMeta &meta) {
+  std::error_code errcode;
+
+  fs::file_time_type ftime = fs::last_write_time(path, errcode);
+  if (errcode.value() != 0) {
+    return errcode.value();
+  }
+  int64_t epoch_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            ftime.time_since_epoch())
+                            .count();
+
+  errcode.clear();
+  std::uintmax_t fsize = fs::file_size(path, errcode);
+  if (errcode.value() != 0) {
+    return errcode.value();
+  }
+
+  meta.last_modified = epoch_in_ms;
+  meta.size = fsize;
+
+  return 0;
+}
 
 }  // anonymous namespace
 
@@ -143,10 +168,32 @@ Status LocalObjectStore::get_object(const std::string_view &bucket,
   return fail ? Status(EIO, "read fail") : Status();
 }
 
+Status LocalObjectStore::get_object_meta(const std::string_view &bucket,
+                                         const std::string_view &key,
+                                         ObjectMeta &meta) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
+  if (!is_valid_key(key)) {
+    return Status(EINVAL, "invalid key");
+  }
+  fs::path key_path = fs::path(generate_path(bucket, key));
+
+  int ret = get_obj_meta_from_file(key_path, meta);
+  if (ret != 0) {
+    return Status(ret, "fail to get object meta");
+  }
+
+  std::string bucket_path = generate_path(bucket);
+  // use lexically_relative() to remove the bucket prefix
+  // example: entry: bucket/key_prefix_dir/key -> key_prefix_dir/key
+  meta.key = key_path.lexically_relative(bucket_path).c_str();
+  return Status();
+}
+
 Status LocalObjectStore::list_object(const std::string_view &bucket,
-                                     const std::string_view &key
+                                     const std::string_view &prefix
                                      [[maybe_unused]],
-                                     std::vector<std::string> &objects) {
+                                     std::vector<ObjectMeta> &objects) {
   const std::lock_guard<std::mutex> _(mutex_);
 
   std::string bucket_path = generate_path(bucket);
@@ -157,9 +204,18 @@ Status LocalObjectStore::list_object(const std::string_view &bucket,
       // is some error.
       assert(!is_dir_empty(std::string_view(entry.path().c_str())));
     } else if (fs::is_regular_file(entry)) {
+      ObjectMeta meta;
       // use lexically_relative() to remove the bucket prefix
       // example: entry: bucket/key_prefix_dir/key -> key_prefix_dir/key
-      objects.push_back(entry.path().lexically_relative(bucket_path).c_str());
+      meta.key = entry.path().lexically_relative(bucket_path).c_str();
+      if (prefix.size() > 0 && std::string_view(meta.key).find(prefix) != 0) {
+        continue;
+      }
+      int ret = get_obj_meta_from_file(entry.path(), meta);
+      if (ret != 0) {
+        return Status(ret, "fail to get object meta");
+      }
+      objects.push_back(meta);
     }
   }
   return Status();

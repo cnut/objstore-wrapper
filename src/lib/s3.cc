@@ -7,6 +7,8 @@
 #include <aws/s3/model/DeleteBucketRequest.h>
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetObjectRequest.h>
+#include <aws/s3/model/HeadObjectRequest.h>
+#include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <errno.h>
 #include <fstream>
@@ -172,10 +174,48 @@ Status S3ObjectStore::get_object(const std::string_view &bucket,
   return Status();
 }
 
-Status S3ObjectStore::list_object(const std::string_view &bucket [[maybe_unused]],
-                                  const std::string_view &key [[maybe_unused]],
-                                  std::vector<std::string> &objects [[maybe_unused]]) {
-  return Status(-1, "not implemented");
+Status S3ObjectStore::get_object_meta(const std::string_view &bucket,
+                                      const std::string_view &key,
+                                      ObjectMeta &meta) {
+  Aws::S3::Model::HeadObjectRequest request;
+  request.SetBucket(Aws::String(bucket));
+  request.SetKey(Aws::String(key));
+  Aws::S3::Model::HeadObjectOutcome outcome = s3_client_.HeadObject(request);
+
+  if (!outcome.IsSuccess()) {
+    const Aws::S3::S3Error &err = outcome.GetError();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
+  }
+
+  meta.key = key;
+  meta.last_modified = outcome.GetResult().GetLastModified().Millis();
+  meta.size = outcome.GetResult().GetContentLength();
+
+  return Status();
+}
+
+Status S3ObjectStore::list_object(const std::string_view &bucket,
+                                  const std::string_view &prefix,
+                                  std::vector<ObjectMeta> &objects) {
+  Aws::S3::Model::ListObjectsRequest request;
+  request.SetBucket(Aws::String(bucket));
+  request.SetPrefix(Aws::String(prefix));
+  Aws::S3::Model::ListObjectsOutcome outcome = s3_client_.ListObjects(request);
+
+  if (!outcome.IsSuccess()) {
+    const Aws::S3::S3Error &err = outcome.GetError();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
+  }
+
+  for (auto obj : outcome.GetResult().GetContents()) {
+    ObjectMeta meta;
+    meta.key = obj.GetKey();
+    meta.last_modified = obj.GetLastModified().Millis();
+    meta.size = obj.GetSize();
+    objects.push_back(meta);
+  }
+
+  return Status();
 }
 
 Status S3ObjectStore::delete_object(const std::string_view &bucket,

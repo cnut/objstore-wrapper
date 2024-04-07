@@ -1,6 +1,7 @@
 #ifndef OBJSTORE_OBJSTORE_H_INCLUDED
 #define OBJSTORE_OBJSTORE_H_INCLUDED
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,6 +32,12 @@ class Status {
   std::string error_msg_;
 };
 
+struct ObjectMeta {
+  std::string key;
+  int64_t last_modified; // timestamp in milliseconds since epoch.
+  long long size;        // body size
+};
+
 class ObjectStore {
  public:
   virtual ~ObjectStore() = default;
@@ -51,10 +58,13 @@ class ObjectStore {
                             const std::string_view &data) = 0;
   virtual Status get_object(const std::string_view &bucket,
                             const std::string_view &key, std::string &body) = 0;
+  virtual Status get_object_meta(const std::string_view &bucket,
+                                 const std::string_view &key,
+                                 ObjectMeta &meta) = 0;
 
   virtual Status list_object(const std::string_view &bucket,
-                             const std::string_view &key,
-                             std::vector<std::string> &objects) = 0;
+                             const std::string_view &prefix,
+                             std::vector<ObjectMeta> &objects) = 0;
 
   virtual Status delete_object(const std::string_view &bucket,
                                const std::string_view &key) = 0;

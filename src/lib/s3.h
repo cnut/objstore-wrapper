@@ -31,10 +31,13 @@ class S3ObjectStore : public ObjectStore {
                     const std::string_view &data) override;
   Status get_object(const std::string_view &bucket, const std::string_view &key,
                     std::string &input) override;
+  Status get_object_meta(const std::string_view &bucket,
+                         const std::string_view &key,
+                         ObjectMeta &meta) override;
 
   Status list_object(const std::string_view &bucket,
-                     const std::string_view &key,
-                     std::vector<std::string> &objects) override;
+                     const std::string_view &prefix,
+                     std::vector<ObjectMeta> &objects) override;
 
   Status delete_object(const std::string_view &bucket,
                        const std::string_view &key) override;
