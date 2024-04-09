@@ -70,6 +70,35 @@ TEST_F(ObjstoreTest, PutGetDeleteMeta) {
       << "fail to delete object " << st.error_message();
 }
 
+TEST_F(ObjstoreTest, PartialRead) {
+  std::string_view key = "test_obj_key";
+  constexpr size_t kValueSize = 128;
+  std::string value;
+  value.resize(kValueSize);
+  for (char ch = 0; ch < kValueSize; ++ch) {
+    value[ch] = ch;
+  }
+  Status st = objstore_->put_object(FLAGS_bucket, key, value);
+  ASSERT_EQ(st.error_code(), 0) << "fail to put object " << st.error_message();
+
+  std::string value_out;
+  st = objstore_->get_object(FLAGS_bucket, key, value_out);
+  ASSERT_EQ(st.error_code(), 0) << "fail to get object " << st.error_message();
+  ASSERT_EQ(value_out, value);
+
+  value_out.clear();
+  size_t off = 13;
+  size_t len = 4;
+  std::string expected_value = value.substr(off, len);
+  st = objstore_->get_object(FLAGS_bucket, key, off, len, value_out);
+  ASSERT_EQ(st.error_code(), 0) << "fail to get object " << st.error_message();
+  ASSERT_EQ(value_out, expected_value);
+
+  st = objstore_->delete_object(FLAGS_bucket, key);
+  ASSERT_EQ(st.error_code(), 0)
+      << "fail to delete object " << st.error_message();
+}
+
 TEST_F(ObjstoreTest, List) {
   std::string key_prefix = "test_obj_key_";
 

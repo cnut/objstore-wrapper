@@ -168,6 +168,28 @@ Status LocalObjectStore::get_object(const std::string_view &bucket,
   return fail ? Status(EIO, "read fail") : Status();
 }
 
+Status LocalObjectStore::get_object(const std::string_view &bucket,
+                                    const std::string_view &key, size_t off,
+                                    size_t len, std::string &body) {
+  const std::lock_guard<std::mutex> _(mutex_);
+
+  if (!is_valid_key(key)) {
+    return Status(EINVAL, "invalid key");
+  }
+
+  std::string key_path = generate_path(bucket, key);
+  std::ifstream input_file(key_path, std::ios::binary);
+  if (!input_file) {
+    return Status(EIO, "Couldn't open file");
+  }
+
+  input_file.seekg(off);
+  body.resize(len);
+  bool fail = !input_file.read(body.data(), len);
+  input_file.close();
+  return fail ? Status(EIO, "read fail") : Status();
+}
+
 Status LocalObjectStore::get_object_meta(const std::string_view &bucket,
                                          const std::string_view &key,
                                          ObjectMeta &meta) {

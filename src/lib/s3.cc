@@ -174,6 +174,33 @@ Status S3ObjectStore::get_object(const std::string_view &bucket,
   return Status();
 }
 
+Status S3ObjectStore::get_object(const std::string_view &bucket,
+                                 const std::string_view &key, size_t off,
+                                 size_t len, std::string &body) {
+  Aws::S3::Model::GetObjectRequest request;
+  request.SetBucket(Aws::String(bucket));
+  request.SetKey(Aws::String(key));
+  std::string byte_range =
+      "bytes=" + std::to_string(off) + "-" + std::to_string(off + len - 1);
+  request.SetRange(byte_range);
+  Aws::S3::Model::GetObjectOutcome outcome = s3_client_.GetObject(request);
+
+  if (!outcome.IsSuccess()) {
+    const Aws::S3::S3Error &err = outcome.GetError();
+    return Status(static_cast<int>(err.GetResponseCode()), err.GetMessage());
+  }
+
+  std::ostringstream oss;
+  oss << outcome.GetResult().GetBody().rdbuf();
+  if (!oss) {
+    return Status(EIO, "unable to read data from response stream");
+  }
+
+  body = oss.str();
+
+  return Status();
+}
+
 Status S3ObjectStore::get_object_meta(const std::string_view &bucket,
                                       const std::string_view &key,
                                       ObjectMeta &meta) {
