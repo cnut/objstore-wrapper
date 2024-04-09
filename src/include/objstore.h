@@ -58,6 +58,9 @@ class ObjectStore {
                             const std::string_view &data) = 0;
   virtual Status get_object(const std::string_view &bucket,
                             const std::string_view &key, std::string &body) = 0;
+  virtual Status get_object(const std::string_view &bucket,
+                            const std::string_view &key, size_t off, size_t len,
+                            std::string &body) = 0;
   virtual Status get_object_meta(const std::string_view &bucket,
                                  const std::string_view &key,
                                  ObjectMeta &meta) = 0;
