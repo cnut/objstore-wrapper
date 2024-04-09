@@ -183,9 +183,19 @@ Status LocalObjectStore::get_object(const std::string_view &bucket,
     return Status(EIO, "Couldn't open file");
   }
 
+  input_file.seekg(0, std::ios::end);
+  std::streamsize fileSize = input_file.tellg();
+  if (off >= fileSize) {
+    return Status(ERANGE, "offset out of range");
+  }
+
   input_file.seekg(off);
   body.resize(len);
   bool fail = !input_file.read(body.data(), len);
+  body.resize(input_file.gcount());
+  if (input_file.eof() && input_file.gcount() > 0) {
+    fail = false;
+  }
   input_file.close();
   return fail ? Status(EIO, "read fail") : Status();
 }
